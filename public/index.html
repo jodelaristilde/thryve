@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thryve.today sign-up</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; }
+  main { width: 100%; max-width: 460px; }
+  .card { padding: 36px 32px 28px; }
+  h1 { font-weight: 800; font-size: clamp(1.8rem, 6vw, 2.3rem); line-height: 1.1; margin: 0 0 8px; }
+  .lede { margin: 0 0 28px; color: var(--muted); line-height: 1.5; }
+  .field { margin-bottom: 18px; }
+  .btn.full { width: 100%; margin-top: 6px; min-height: 50px; }
+  .slogan {
+    font-family: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    font-weight: 600; text-align: center; margin: 28px 0 0; padding-top: 20px;
+    border-top: 3px solid var(--sun); font-size: 1.15rem;
+  }
+  .done { text-align: center; padding: 12px 0; }
+  .done h2 { margin: 0 0 8px; }
+  .done p { color: var(--muted); margin: 0; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div id="formView">
+      <h1>Thank You for your interest in Thryve.Today</h1>
+      <p class="lede">Tell us a little about you and the course you want to start with.</p>
+
+      <form id="signup" novalidate onsubmit="return false">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" autocomplete="name" required>
+          <p class="error" id="e-name" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="tel">Telephone</label>
+          <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 123-4567" required>
+          <p class="error" id="e-tel" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          <p class="error" id="e-email" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="course">Course interested in</label>
+          <select id="course" name="course" required>
+            <option value="" selected disabled>Choose a course</option>
+            <option value="Not sure yet">Not sure yet</option>
+          </select>
+          <p class="error" id="e-course" hidden></p>
+        </div>
+
+        <div class="trap" aria-hidden="true">
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
+        <p class="error" id="e-form" role="alert" hidden></p>
+        <button type="submit" class="btn full" id="send">Sign me up</button>
+      </form>
+    </div>
+
+    <div class="done" id="doneView" hidden>
+      <h2>Thank you for choosing Thryve.today</h2>
+      <p id="doneMsg">We'll be in touch soon about your course.</p>
+    </div>
+
+    <p class="slogan">Come &amp; Thryve with us</p>
+  </div>
+</main>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Fill the dropdown with the courses set on the admin page.
+  fetch('/api/courses')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var select = $('course');
+      var last = select.querySelector('option[value="Not sure yet"]');
+      (d.courses || []).forEach(function (c) {
+        var o = document.createElement('option');
+        o.value = c;
+        o.textContent = c;
+        select.insertBefore(o, last);
+      });
+    })
+    .catch(function () {});
+
+  var rules = {
+    name: function (v) { return v.trim().split(/\s+/).length >= 2 ? '' : 'Enter your first and last name.'; },
+    tel: function (v) { return v.replace(/\D/g, '').length >= 7 ? '' : 'Enter a valid phone number.'; },
+    email: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? '' : 'Enter a valid email address.'; },
+    course: function (v) { return v ? '' : 'Choose a course.'; }
+  };
+
+  function check(id) {
+    var el = $(id);
+    var msg = rules[id](el.value);
+    var err = $('e-' + id);
+    err.textContent = msg;
+    err.hidden = !msg;
+    el.classList.toggle('invalid', !!msg);
+    return !msg;
+  }
+
+  Object.keys(rules).forEach(function (id) {
+    $(id).addEventListener('blur', function () { check(id); });
+  });
+
+  $('send').addEventListener('click', function () {
+    var ok = true;
+    Object.keys(rules).forEach(function (id) { if (!check(id)) ok = false; });
+    if (!ok) {
+      var bad = document.querySelector('#signup .invalid');
+      if (bad) bad.focus();
+      return;
+    }
+
+    var btn = $('send');
+    var formErr = $('e-form');
+    formErr.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('name').value.trim(),
+        tel: $('tel').value.trim(),
+        email: $('email').value.trim(),
+        course: $('course').value,
+        company: $('company').value
+      })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Something went wrong.');
+        $('doneMsg').textContent = $('name').value.trim().split(/\s+/)[0] + ", we'll be in touch soon about your course.";
+        $('formView').hidden = true;
+        $('doneView').hidden = false;
+      })
+      .catch(function (e) {
+        formErr.textContent = e.message || 'We could not save your sign-up. Please try again.';
+        formErr.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Sign me up';
+      });
+  });
+</script>
+</body>
+</html>
