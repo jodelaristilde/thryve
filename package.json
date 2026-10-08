@@ -1,0 +1,6 @@
+{
+  "name": "thryve-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thryve.today sign-up form with a GitHub-protected admin page"
+}
