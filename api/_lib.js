@@ -71,13 +71,12 @@ function parseCookies(req) {
   return out;
 }
 
-// Returns the GitHub username if the request comes from an allowed admin, otherwise null.
+// Returns the admin username if the request has a valid admin session, otherwise null.
 function getAdmin(req) {
   const s = verifySession(parseCookies(req).session);
   if (!s) return null;
-  const allowed = (process.env.ADMIN_GITHUB_USERS || '')
-    .split(',').map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
-  return allowed.indexOf(String(s.u).toLowerCase()) > -1 ? s.u : null;
+  const admin = process.env.ADMIN_USERNAME;
+  return admin && s.u === admin ? s.u : null;
 }
 
 function readBody(req) {
