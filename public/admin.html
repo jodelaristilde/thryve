@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Thryve.today admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  main { max-width: 900px; margin: 0 auto; }
+  h1 { font-weight: 800; font-size: clamp(1.6rem, 5vw, 2rem); margin: 0; }
+  h2 { font-size: 1.3rem; margin: 0 0 4px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .who { color: var(--muted); display: flex; align-items: center; gap: 12px; }
+  .card { margin-bottom: 20px; }
+  .hint { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
+  .login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
+  .login .btn { width: 100%; margin-top: 8px; }
+  .course-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .course-row input { flex: 1; }
+  .icon { min-width: 46px; padding: 0 12px; }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .status { font-size: 0.95rem; }
+  .status.ok { color: var(--ok); }
+  .status.bad { color: var(--error); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .empty { color: var(--muted); padding: 16px 0 4px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <section id="loginView" class="card login" hidden>
+    <h1>Thryve.today admin</h1>
+    <p class="hint">Sign in with GitHub to manage courses and see sign-ups.</p>
+    <p class="error" id="denied" hidden>That GitHub account doesn't have access.</p>
+    <a class="btn" href="/api/auth/login">Sign in with GitHub</a>
+  </section>
+
+  <div id="appView" hidden>
+    <div class="top">
+      <h1>Thryve.today admin</h1>
+      <div class="who"><span id="who"></span><a class="btn ghost" href="/api/auth/logout">Sign out</a></div>
+    </div>
+
+    <section class="card">
+      <h2>Courses</h2>
+      <p class="hint">These appear in the "Course interested in" dropdown on your sign-up form. "Not sure yet" is always added at the end.</p>
+      <div id="courseList"></div>
+      <div class="actions">
+        <button class="btn ghost" id="addCourse" type="button">Add a course</button>
+        <button class="btn" id="saveCourses" type="button">Save courses</button>
+        <span class="status" id="courseStatus" role="status"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Sign-ups <span id="count" class="hint"></span></h2>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn ghost" id="refresh" type="button">Refresh</button>
+        <a class="btn" href="/api/signups?format=csv">Download as spreadsheet (CSV)</a>
+      </div>
+      <p class="empty" id="empty" hidden>No sign-ups yet.</p>
+      <div class="table-wrap" id="tableWrap" hidden>
+        <table>
+          <thead><tr><th>Date</th><th>Full name</th><th>Telephone</th><th>Email</th><th>Course</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var courses = [];
+
+  function setStatus(msg, ok) {
+    var s = $('courseStatus');
+    s.textContent = msg;
+    s.className = 'status ' + (ok ? 'ok' : 'bad');
+  }
+
+  function renderCourses() {
+    var box = $('courseList');
+    box.textContent = '';
+    courses.forEach(function (c, i) {
+      var row = document.createElement('div');
+      row.className = 'course-row';
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = c;
+      input.maxLength = 100;
+      input.setAttribute('aria-label', 'Course name');
+      input.addEventListener('input', function () { courses[i] = input.value; });
+
+      function mini(label, text, handler, disabled) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn ghost icon';
+        b.textContent = text;
+        b.setAttribute('aria-label', label);
+        b.disabled = !!disabled;
+        b.addEventListener('click', handler);
+        return b;
+      }
+
+      row.appendChild(input);
+      row.appendChild(mini('Move up', '↑', function () { move(i, -1); }, i === 0));
+      row.appendChild(mini('Move down', '↓', function () { move(i, 1); }, i === courses.length - 1));
+      row.appendChild(mini('Remove course', '✕', function () { courses.splice(i, 1); renderCourses(); }));
+      box.appendChild(row);
+    });
+    if (!courses.length) {
+      var p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'No courses yet. Add your first one.';
+      box.appendChild(p);
+    }
+  }
+
+  function move(i, d) {
+    var j = i + d;
+    if (j < 0 || j >= courses.length) return;
+    var t = courses[i]; courses[i] = courses[j]; courses[j] = t;
+    renderCourses();
+  }
+
+  $('addCourse').addEventListener('click', function () {
+    courses.push('');
+    renderCourses();
+    var inputs = document.querySelectorAll('#courseList input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
+  $('saveCourses').addEventListener('click', function () {
+    setStatus('Saving…', true);
+    fetch('/api/courses', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courses: courses })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Could not save.');
+        courses = res.d.courses;
+        renderCourses();
+        setStatus('Saved. The sign-up form is updated.', true);
+      })
+      .catch(function (e) { setStatus(e.message, false); });
+  });
+
+  function cell(tr, text) {
+    var td = document.createElement('td');
+    td.textContent = text;
+    tr.appendChild(td);
+  }
+
+  function loadSignups() {
+    fetch('/api/signups')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var list = d.signups || [];
+        var rows = $('rows');
+        rows.textContent = '';
+        $('count').textContent = '(' + list.length + ')';
+        $('empty').hidden = list.length > 0;
+        $('tableWrap').hidden = list.length === 0;
+        list.forEach(function (s) {
+          var tr = document.createElement('tr');
+          cell(tr, new Date(s.date).toLocaleString());
+          cell(tr, s.name);
+          cell(tr, s.tel);
+          cell(tr, s.email);
+          cell(tr, s.course);
+          rows.appendChild(tr);
+        });
+      })
+      .catch(function () {});
+  }
+  $('refresh').addEventListener('click', loadSignups);
+
+  fetch('/api/me')
+    .then(function (r) { return r.json(); })
+    .then(function (me) {
+      if (!me.user) {
+        $('loginView').hidden = false;
+        if (/error=denied/.test(location.search)) $('denied').hidden = false;
+        return;
+      }
+      $('who').textContent = 'Signed in as ' + me.user;
+      $('appView').hidden = false;
+      fetch('/api/courses').then(function (r) { return r.json(); }).then(function (d) {
+        courses = d.courses || [];
+        renderCourses();
+      });
+      loadSignups();
+    })
+    .catch(function () { $('loginView').hidden = false; });
+</script>
+</body>
+</html>
