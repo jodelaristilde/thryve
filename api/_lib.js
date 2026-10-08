@@ -28,8 +28,12 @@ const DEFAULT_COURSES = [
 
 // Courses saved from the admin page, or the starting list if none were saved yet.
 async function getCourses() {
-  const raw = await redis(['GET', 'courses']);
-  return raw ? JSON.parse(raw) : DEFAULT_COURSES;
+  try {
+    const raw = await redis(['GET', 'courses']);
+    return raw ? JSON.parse(raw) : DEFAULT_COURSES;
+  } catch (e) {
+    return DEFAULT_COURSES;
+  }
 }
 
 // ---------- Signed session cookie ----------
