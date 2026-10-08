@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/style.css">
 <style>
-  main { max-width: 900px; margin: 0 auto; }
+  main { max-width: 1100px; margin: 0 auto; }
   h1 { font-weight: 800; font-size: clamp(1.6rem, 5vw, 2rem); margin: 0; }
   h2 { font-size: 1.3rem; margin: 0 0 4px; }
   .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -16,6 +16,8 @@
   .card { margin-bottom: 20px; }
   .hint { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
   .login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
+  .login form { text-align: left; }
+  .login .field { margin-bottom: 14px; }
   .login .btn { width: 100%; margin-top: 8px; }
   .course-row { display: flex; gap: 8px; margin-bottom: 10px; }
   .course-row input { flex: 1; }
@@ -25,8 +27,8 @@
   .status.ok { color: var(--ok); }
   .status.bad { color: var(--error); }
   .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 14px; }
-  table { border-collapse: collapse; width: 100%; min-width: 640px; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   th { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
   tr:last-child td { border-bottom: 0; }
   .empty { color: var(--muted); padding: 16px 0 4px; margin: 0; }
@@ -36,9 +38,19 @@
 <main>
   <section id="loginView" class="card login" hidden>
     <h1>Thryve.today admin</h1>
-    <p class="hint">Sign in with GitHub to manage courses and see sign-ups.</p>
-    <p class="error" id="denied" hidden>That GitHub account doesn't have access.</p>
-    <a class="btn" href="/api/auth/login">Sign in with GitHub</a>
+    <p class="hint">Sign in to manage courses and see sign-ups.</p>
+    <form id="loginForm" novalidate onsubmit="return false">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" type="text" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+      </div>
+      <p class="error" id="loginError" role="alert" hidden></p>
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+    </form>
   </section>
 
   <div id="appView" hidden>
@@ -173,7 +185,7 @@
         $('tableWrap').hidden = list.length === 0;
         list.forEach(function (s) {
           var tr = document.createElement('tr');
-          cell(tr, new Date(s.date).toLocaleString());
+          cell(tr, new Date(s.date).toLocaleDateString());
           cell(tr, s.name);
           cell(tr, s.tel);
           cell(tr, s.email);
@@ -185,12 +197,34 @@
   }
   $('refresh').addEventListener('click', loadSignups);
 
+  function doLogin() {
+    var btn = $('loginBtn');
+    var err = $('loginError');
+    err.hidden = true;
+    btn.disabled = true;
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: $('username').value.trim(), password: $('password').value })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Could not sign in.');
+        location.reload();
+      })
+      .catch(function (e) {
+        err.textContent = e.message;
+        err.hidden = false;
+        btn.disabled = false;
+      });
+  }
+  $('loginForm').addEventListener('submit', doLogin);
+
   fetch('/api/me')
     .then(function (r) { return r.json(); })
     .then(function (me) {
       if (!me.user) {
         $('loginView').hidden = false;
-        if (/error=denied/.test(location.search)) $('denied').hidden = false;
         return;
       }
       $('who').textContent = 'Signed in as ' + me.user;
