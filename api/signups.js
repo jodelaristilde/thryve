@@ -1,5 +1,9 @@
 const { redis, getAdmin } = require('./_lib');
 
+function dateOnly(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+}
+
 function csvCell(value) {
   let s = String(value == null ? '' : value);
   // Stop spreadsheet apps from running a sign-up as a formula.
@@ -22,7 +26,7 @@ module.exports = async function (req, res) {
     if (req.query.format === 'csv') {
       const lines = [['Date', 'Full name', 'Telephone', 'Email', 'Course'].map(csvCell).join(',')];
       signups.forEach(function (s) {
-        lines.push([s.date, s.name, s.tel, s.email, s.course].map(csvCell).join(','));
+        lines.push([dateOnly(s.date), s.name, s.tel, s.email, s.course].map(csvCell).join(','));
       });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="thryve-signups.csv"');
