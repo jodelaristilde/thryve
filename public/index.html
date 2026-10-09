@@ -111,3 +111,60 @@
     name: function (v) { return v.trim().split(/\s+/).length >= 2 ? '' : 'Enter your first and last name.'; },
     tel: function (v) { return v.replace(/\D/g, '').length >= 7 ? '' : 'Enter a valid phone number.'; },
     email: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? '' : 'Enter a valid email address.'; },
+    course: function (v) { return v ? '' : 'Choose a course.'; }
+  };
+
+  function check(id) {
+    var el = $(id);
+    var msg = rules[id](el.value);
+    var err = $('e-' + id);
+    err.textContent = msg;
+    err.hidden = !msg;
+    el.classList.toggle('invalid', !!msg);
+    return !msg;
+  }
+
+  Object.keys(rules).forEach(function (id) {
+    $(id).addEventListener('blur', function () { check(id); });
+  });
+
+  $('signup').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var ok = true;
+    Object.keys(rules).forEach(function (id) { if (!check(id)) ok = false; });
+    if (!ok) {
+      var bad = document.querySelector('#signup .invalid');
+      if (bad) bad.focus();
+      return;
+    }
+
+    var btn = $('send');
+    var formErr = $('e-form');
+    formErr.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('name').value.trim(),
+        tel: $('tel').value.trim(),
+        email: $('email').value.trim(),
+        course: $('course').value,
+        company: $('company').value
+      })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Something went wrong.');
+        $('doneMsg').textContent = $('name').value.trim().split(/\s+/)[0] + ", we'll be in touch soon about your course.";
+        $('formView').hidden = true;
+        $('doneView').hidden = false;
+        window.scrollTo(0, 0);
+        // Show the thank-you for 3 seconds, then go to the main website.
+        setTimeout(function () { window.location.href = 'https://www.thryve.today/'; }, 3000);
+      })
+      .catch(function (e) {
+        formErr.textContent = e.message || 'We could not save your sign-up. Please try again.';
+        formErr.hidden = false;
