@@ -67,8 +67,8 @@
         </div>
 
         <div class="trap" aria-hidden="true">
-          <label for="company">Company</label>
-          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+          <label for="hp_check">Leave this empty</label>
+          <input id="hp_check" name="hp_check" type="text" tabindex="-1" autocomplete="nope">
         </div>
 
         <p class="error" id="e-form" role="alert" hidden></p>
@@ -161,7 +161,7 @@
         tel: $('tel').value.trim(),
         email: $('email').value.trim(),
         course: $('course').value,
-        company: $('company').value
+        company: $('hp_check').value
       })
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
@@ -171,7 +171,7 @@
         $('thanksMsg').textContent = first + ", we'll be in touch soon about your course.";
         $('thanks').style.display = 'flex';
         window.scrollTo(0, 0);
-        // Show the thank-you for 3 seconds, then go to the main website.
+        // Show the thank-you for 5 seconds, then go to the main website.
         setTimeout(function () { window.location.replace('https://www.thryve.today/'); }, 5000);
       })
       .catch(function (e) {
