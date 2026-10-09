@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { redis, getCourses, readBody, isJson } = require('./_lib');
 
 const NOT_SURE = 'Not sure yet';
@@ -28,7 +29,7 @@ module.exports = async function (req, res) {
     const allowed = (await getCourses()).concat([NOT_SURE]);
     if (allowed.indexOf(course) === -1) { res.status(400).json({ error: 'Choose a course from the list.' }); return; }
 
-    const record = { date: new Date().toISOString(), name: name, tel: tel, email: email, course: course };
+    const record = { id: crypto.randomUUID(), date: new Date().toISOString(), name: name, tel: tel, email: email, course: course };
     await redis(['RPUSH', 'signups', JSON.stringify(record)]);
     res.status(200).json({ ok: true });
   } catch (e) {
