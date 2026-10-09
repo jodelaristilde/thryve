@@ -43,4 +43,71 @@
 
         <div class="field">
           <label for="tel">Telephone</label>
-          <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel"
+          <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="(555) 123-4567" required>
+          <p class="error" id="e-tel" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          <p class="error" id="e-email" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="course">Course interested in</label>
+          <select id="course" name="course" required>
+            <option value="" selected disabled>Choose a course</option>
+            <option class="c" value="Advanced Life Support (ACLS)">Advanced Life Support (ACLS)</option>
+            <option class="c" value="NURSE AID TRAINING PROGRAM (CNA)">NURSE AID TRAINING PROGRAM (CNA)</option>
+            <option class="c" value="Phlebotomy Class">Phlebotomy Class</option>
+            <option class="c" value="Basic Life Support (BLS)">Basic Life Support (BLS)</option>
+            <option value="Not sure yet">Not sure yet</option>
+          </select>
+          <p class="error" id="e-course" hidden></p>
+        </div>
+
+        <div class="trap" aria-hidden="true">
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
+        <p class="error" id="e-form" role="alert" hidden></p>
+        <button type="submit" class="btn full" id="send">Sign me up</button>
+      </form>
+    </div>
+
+    <div class="done" id="doneView" hidden>
+      <h2>Thank you for choosing Thryve.today</h2>
+      <p id="doneMsg">We'll be in touch soon about your course.</p>
+    </div>
+
+    <p class="slogan">Come &amp; Thryve with us</p>
+  </div>
+</main>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+
+  // The four courses are already in the dropdown. If the admin page has a saved
+  // list, swap in that list instead.
+  fetch('/api/courses')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !Array.isArray(d.courses)) return;
+      var select = $('course');
+      Array.prototype.slice.call(select.querySelectorAll('option.c')).forEach(function (o) { o.remove(); });
+      var last = select.querySelector('option[value="Not sure yet"]');
+      d.courses.forEach(function (c) {
+        var o = document.createElement('option');
+        o.className = 'c';
+        o.value = c;
+        o.textContent = c;
+        select.insertBefore(o, last);
+      });
+    })
+    .catch(function () {});
+
+  var rules = {
+    name: function (v) { return v.trim().split(/\s+/).length >= 2 ? '' : 'Enter your first and last name.'; },
+    tel: function (v) { return v.replace(/\D/g, '').length >= 7 ? '' : 'Enter a valid phone number.'; },
+    email: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? '' : 'Enter a valid email address.'; },
