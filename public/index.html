@@ -57,6 +57,10 @@
           <label for="course">Course interested in</label>
           <select id="course" name="course" required>
             <option value="" selected disabled>Choose a course</option>
+            <option class="c" value="Advanced Life Support (ACLS)">Advanced Life Support (ACLS)</option>
+            <option class="c" value="NURSE AID TRAINING PROGRAM (CNA)">NURSE AID TRAINING PROGRAM (CNA)</option>
+            <option class="c" value="Phlebotomy Class">Phlebotomy Class</option>
+            <option class="c" value="Basic Life Support (BLS)">Basic Life Support (BLS)</option>
             <option value="Not sure yet">Not sure yet</option>
           </select>
           <p class="error" id="e-course" hidden></p>
@@ -84,14 +88,18 @@
 <script>
   var $ = function (id) { return document.getElementById(id); };
 
-  // Fill the dropdown with the courses set on the admin page.
+  // The four courses are already in the dropdown. If the admin page has a saved
+  // list, swap in that list instead.
   fetch('/api/courses')
     .then(function (r) { return r.json(); })
     .then(function (d) {
+      if (!d || !Array.isArray(d.courses)) return;
       var select = $('course');
+      Array.prototype.slice.call(select.querySelectorAll('option.c')).forEach(function (o) { o.remove(); });
       var last = select.querySelector('option[value="Not sure yet"]');
-      (d.courses || []).forEach(function (c) {
+      d.courses.forEach(function (c) {
         var o = document.createElement('option');
+        o.className = 'c';
         o.value = c;
         o.textContent = c;
         select.insertBefore(o, last);
@@ -119,3 +127,27 @@
   Object.keys(rules).forEach(function (id) {
     $(id).addEventListener('blur', function () { check(id); });
   });
+
+  $('send').addEventListener('click', function () {
+    var ok = true;
+    Object.keys(rules).forEach(function (id) { if (!check(id)) ok = false; });
+    if (!ok) {
+      var bad = document.querySelector('#signup .invalid');
+      if (bad) bad.focus();
+      return;
+    }
+
+    var btn = $('send');
+    var formErr = $('e-form');
+    formErr.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('name').value.trim(),
+        tel: $('tel').value.trim(),
+        email: $('email').value.trim(),
+        course:
