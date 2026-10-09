@@ -1,0 +1,5 @@
+module.exports = function (req, res) {
+  res.setHeader('Set-Cookie', 'session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+  res.writeHead(302, { Location: '/admin' });
+  res.end();
+};

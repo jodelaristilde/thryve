@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Thryve.today admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { font-weight: 800; font-size: clamp(1.6rem, 5vw, 2rem); margin: 0; }
+  h2 { font-size: 1.3rem; margin: 0 0 4px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .who { color: var(--muted); display: flex; align-items: center; gap: 12px; }
+  .card { margin-bottom: 20px; }
+  .hint { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
+  .login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
+  .login form { text-align: left; }
+  .login .field { margin-bottom: 14px; }
+  .login .btn { width: 100%; margin-top: 8px; }
+  .course-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .course-row input { flex: 1; }
+  .icon { min-width: 46px; padding: 0 12px; }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .status { font-size: 0.95rem; }
+  .status.ok { color: var(--ok); }
+  .status.bad { color: var(--error); }
+  .toolbar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; }
+  .toolbar .filter { min-width: 220px; }
+  .toolbar select { min-height: 46px; }
+  .btn.danger { background: var(--error); color: #fff; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  th.check, td.check { width: 44px; }
+  input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
+  .sort { font: inherit; font-weight: 600; font-size: 0.9rem; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+  .sort:hover { color: var(--ink); }
+  .empty { color: var(--muted); padding: 16px 0 4px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <section id="loginView" class="card login" hidden>
+    <h1>Thryve.today admin</h1>
+    <p class="hint">Sign in to manage courses and see sign-ups.</p>
+    <form id="loginForm" novalidate onsubmit="return false">
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" type="text" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+      </div>
+      <p class="error" id="loginError" role="alert" hidden></p>
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <div id="appView" hidden>
+    <div class="top">
+      <h1>Thryve.today admin</h1>
+      <div class="who"><span id="who"></span><a class="btn ghost" href="/api/auth/logout">Sign out</a></div>
+    </div>
+
+    <p style="margin:0 0 20px">
+      <button class="btn ghost" id="courseToggle" type="button" aria-expanded="false" aria-controls="coursePanel">Course</button>
+    </p>
+
+    <section class="card" id="coursePanel" hidden>
+      <h2>Courses</h2>
+      <p class="hint">These appear in the "Course interested in" dropdown on your sign-up form. "Not sure yet" is always added at the end.</p>
+      <div id="courseList"></div>
+      <div class="actions">
+        <button class="btn ghost" id="addCourse" type="button">Add a course</button>
+        <button class="btn" id="saveCourses" type="button">Save courses</button>
+        <span class="status" id="courseStatus" role="status"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Sign-ups <span id="count" class="hint"></span></h2>
+      <div class="toolbar">
+        <div class="filter">
+          <label for="filter">Filter by course</label>
+          <select id="filter"><option value="">All courses</option></select>
+        </div>
+        <button class="btn ghost" id="refresh" type="button">Refresh</button>
+        <a class="btn" id="csv" href="/api/signups?format=csv">Download as spreadsheet (CSV)</a>
+        <button class="btn danger" id="delete" type="button" disabled>Delete selected</button>
+        <span class="status" id="listStatus" role="status"></span>
+      </div>
+      <p class="empty" id="empty" hidden>No sign-ups to show.</p>
+      <div class="table-wrap" id="tableWrap" hidden>
+        <table>
+          <thead>
+            <tr>
+              <th class="check"><input type="checkbox" id="all" aria-label="Select all shown"></th>
+              <th><button class="sort" type="button" data-key="date">Date</button></th>
+              <th><button class="sort" type="button" data-key="name">Full name</button></th>
+              <th>Telephone</th>
+              <th>Email</th>
+              <th><button class="sort" type="button" data-key="course">Course</button></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var courses = [];
+  var signups = [];
+  var selected = {};
+  var sortKey = 'date';
+  var sortDir = -1; // newest first
+
+  // ---------- Courses (hidden behind the "Course" button) ----------
+  $('courseToggle').addEventListener('click', function () {
+    var panel = $('coursePanel');
+    panel.hidden = !panel.hidden;
+    this.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+
+  function setStatus(msg, ok) {
+    var s = $('courseStatus');
+    s.textContent = msg;
+    s.className = 'status ' + (ok ? 'ok' : 'bad');
+  }
+
+  function renderCourses() {
+    var box = $('courseList');
+    box.textContent = '';
+    courses.forEach(function (c, i) {
+      var row = document.createElement('div');
+      row.className = 'course-row';
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = c;
+      input.maxLength = 100;
+      input.setAttribute('aria-label', 'Course name');
+      input.addEventListener('input', function () { courses[i] = input.value; });
+
+      function mini(label, text, handler, disabled) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn ghost icon';
+        b.textContent = text;
+        b.setAttribute('aria-label', label);
+        b.disabled = !!disabled;
+        b.addEventListener('click', handler);
+        return b;
+      }
+
+      row.appendChild(input);
+      row.appendChild(mini('Move up', '↑', function () { move(i, -1); }, i === 0));
+      row.appendChild(mini('Move down', '↓', function () { move(i, 1); }, i === courses.length - 1));
+      row.appendChild(mini('Remove course', '✕', function () { courses.splice(i, 1); renderCourses(); }));
+      box.appendChild(row);
+    });
+    if (!courses.length) {
+      var p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'No courses yet. Add your first one.';
+      box.appendChild(p);
+    }
+  }
+
+  function move(i, d) {
+    var j = i + d;
+    if (j < 0 || j >= courses.length) return;
+    var t = courses[i]; courses[i] = courses[j]; courses[j] = t;
+    renderCourses();
+  }
+
+  $('addCourse').addEventListener('click', function () {
+    courses.push('');
+    renderCourses();
+    var inputs = document.querySelectorAll('#courseList input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
+  $('saveCourses').addEventListener('click', function () {
+    setStatus('Saving…', true);
+    fetch('/api/courses', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courses: courses })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Could not save.');
+        courses = res.d.courses;
+        renderCourses();
+        setStatus('Saved. The sign-up form is updated.', true);
+      })
+      .catch(function (e) { setStatus(e.message, false); });
+  });
+
+  // ---------- Sign-ups ----------
+  function cell(tr, text) {
+    var td = document.createElement('td');
+    td.textContent = text;
+    tr.appendChild(td);
+  }
+
+  function shownList() {
+    var f = $('filter').value;
+    var list = signups.filter(function (s) { return !f || s.course === f; });
+    list.sort(function (a, b) {
+      var x = String(a[sortKey] || '').toLowerCase();
+      var y = String(b[sortKey] || '').toLowerCase();
+      if (x < y) return -1 * sortDir;
+      if (x > y) return 1 * sortDir;
+      return 0;
+    });
+    return list;
+  }
+
+  function updateButtons(list) {
+    var n = Object.keys(selected).length;
+    $('delete').disabled = n === 0;
+    $('delete').textContent = n ? 'Delete selected (' + n + ')' : 'Delete selected';
+    $('all').checked = list.length > 0 && list.every(function (s) { return selected[s.id]; });
+    var f = $('filter').value;
+    $('csv').href = '/api/signups?format=csv' + (f ? '&course=' + encodeURIComponent(f) : '');
+  }
+
+  function render() {
+    var list = shownList();
+    var rows = $('rows');
+    rows.textContent = '';
+    $('count').textContent = '(' + list.length + (list.length !== signups.length ? ' of ' + signups.length : '') + ')';
+    $('empty').hidden = list.length > 0;
+    $('tableWrap').hidden = list.length === 0;
+
+    list.forEach(function (s) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.className = 'check';
+      var box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = !!selected[s.id];
+      box.setAttribute('aria-label', 'Select ' + s.name);
+      box.addEventListener('change', function () {
+        if (box.checked) selected[s.id] = true; else delete selected[s.id];
+        updateButtons(shownList());
+      });
+      td.appendChild(box);
+      tr.appendChild(td);
+      cell(tr, new Date(s.date).toLocaleDateString());
+      cell(tr, s.name);
+      cell(tr, s.tel);
+      cell(tr, s.email);
+      cell(tr, s.course);
+      rows.appendChild(tr);
+    });
+    updateButtons(list);
+  }
+
+  function fillFilter() {
+    var sel = $('filter');
+    var keep = sel.value;
+    var seen = {};
+    signups.forEach(function (s) { seen[s.course] = true; });
+    sel.textContent = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All courses';
+    sel.appendChild(all);
+    Object.keys(seen).sort().forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c;
+      o.textContent = c;
+      sel.appendChild(o);
+    });
+    sel.value = seen[keep] ? keep : '';
+  }
+
+  function loadSignups() {
+    return fetch('/api/signups')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        signups = d.signups || [];
+        var ids = {};
+        signups.forEach(function (s) { ids[s.id] = true; });
+        Object.keys(selected).forEach(function (id) { if (!ids[id]) delete selected[id]; });
+        fillFilter();
+        render();
+      })
+      .catch(function () {});
+  }
+
+  $('filter').addEventListener('change', render);
+  $('refresh').addEventListener('click', loadSignups);
+
+  $('all').addEventListener('change', function () {
+    var on = $('all').checked;
+    shownList().forEach(function (s) { if (on) selected[s.id] = true; else delete selected[s.id]; });
+    render();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sort'), function (b) {
+    b.addEventListener('click', function () {
+      var key = b.getAttribute('data-key');
+      if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = key === 'date' ? -1 : 1; }
+      render();
+    });
+  });
+
+  $('delete').addEventListener('click', function () {
+    var ids = Object.keys(selected);
+    if (!ids.length) return;
+    if (!confirm('Delete ' + ids.length + ' selected sign-up' + (ids.length === 1 ? '' : 's') + '? This cannot be undone.')) return;
+    var status = $('listStatus');
+    status.textContent = 'Deleting…';
+    status.className = 'status ok';
+    fetch('/api/signups', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Could not delete.');
+        selected = {};
+        status.textContent = 'Deleted ' + res.d.removed + '.';
+        return loadSignups();
+      })
+      .catch(function (e) {
+        status.textContent = e.message;
+        status.className = 'status bad';
+      });
+  });
+
+  // ---------- Sign in ----------
+  function doLogin() {
+    var btn = $('loginBtn');
+    var err = $('loginError');
+    err.hidden = true;
+    btn.disabled = true;
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: $('username').value.trim(), password: $('password').value })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || 'Could not sign in.');
+        location.reload();
+      })
+      .catch(function (e) {
+        err.textContent = e.message;
+        err.hidden = false;
+        btn.disabled = false;
+      });
+  }
+  $('loginForm').addEventListener('submit', doLogin);
+
+  fetch('/api/me')
+    .then(function (r) { return r.json(); })
+    .then(function (me) {
+      if (!me.user) {
+        $('loginView').hidden = false;
+        return;
+      }
+      $('who').textContent = 'Signed in as ' + me.user;
+      $('appView').hidden = false;
+      fetch('/api/courses').then(function (r) { return r.json(); }).then(function (d) {
+        courses = d.courses || [];
+        renderCourses();
+      });
+      loadSignups();
+    })
+    .catch(function () { $('loginView').hidden = false; });
+</script>
+</body>
+</html>
