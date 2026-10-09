@@ -85,6 +85,15 @@
   </div>
 </main>
 
+<div id="thanks" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#dcefe6;color:#17283f;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:Figtree,system-ui,-apple-system,'Segoe UI',sans-serif;">
+  <div style="background:#ffffff;border:1px solid #b9cfc4;border-radius:20px;padding:40px 32px;max-width:460px;width:100%;">
+    <img src="/logo.png" alt="Thryve.Today Training Center" width="84" height="84" style="display:block;margin:0 auto 18px;">
+    <h2 style="margin:0 0 10px;font-size:1.8rem;line-height:1.15;color:#17283f;">Thank you for choosing Thryve.today</h2>
+    <p id="thanksMsg" style="margin:0 0 6px;color:#51627a;font-size:1.1rem;line-height:1.5;">We'll be in touch soon about your course.</p>
+    <p style="margin:14px 0 0;color:#51627a;font-size:0.95rem;">Taking you to our website&hellip;</p>
+  </div>
+</div>
+
 <script>
   var $ = function (id) { return document.getElementById(id); };
 
@@ -158,13 +167,21 @@
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
         if (!res.ok) throw new Error(res.d.error || 'Something went wrong.');
-        $('doneMsg').textContent = $('name').value.trim().split(/\s+/)[0] + ", we'll be in touch soon about your course.";
-        $('formView').hidden = true;
-        $('doneView').hidden = false;
+        var first = $('name').value.trim().split(/\s+/)[0];
+        $('thanksMsg').textContent = first + ", we'll be in touch soon about your course.";
+        $('thanks').style.display = 'flex';
         window.scrollTo(0, 0);
         // Show the thank-you for 3 seconds, then go to the main website.
-        setTimeout(function () { window.location.href = 'https://www.thryve.today/'; }, 3000);
+        setTimeout(function () { window.location.replace('https://www.thryve.today/'); }, 3000);
       })
       .catch(function (e) {
         formErr.textContent = e.message || 'We could not save your sign-up. Please try again.';
         formErr.hidden = false;
+        formErr.scrollIntoView({ block: 'center' });
+        btn.disabled = false;
+        btn.textContent = 'Sign me up';
+      });
+  });
+</script>
+</body>
+</html>
